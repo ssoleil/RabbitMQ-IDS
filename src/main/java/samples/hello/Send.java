@@ -1,9 +1,11 @@
-package samples;
+package samples.hello;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 
 import java.nio.charset.StandardCharsets;
+
+//https://www.rabbitmq.com/tutorials/tutorial-one-java.html
 
 public class Send {
 

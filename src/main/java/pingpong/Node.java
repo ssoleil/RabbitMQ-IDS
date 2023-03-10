@@ -97,8 +97,8 @@ public class Node implements Communication_itf{
                 if (!started) {
                     this.started = true;
                     sendMsg(new MessageObj(msg.getSender(), msg.getReceiver(), PING));
-                }
-                sendMsg(new MessageObj(msg.getReceiver(), msg.getSender(), STARTED));
+                } else
+                    sendMsg(new MessageObj(msg.getSender(), msg.getReceiver(), STARTED));
             }
 
             //2nd rule: receive a PING
@@ -109,7 +109,7 @@ public class Node implements Communication_itf{
 
             case ERROR -> System.out.println("Request failed");
             case STARTED -> System.out.println("Node is already started");
-            default -> sendMsg(new MessageObj(msg.getReceiver(), msg.getSender(), ERROR));
+            default -> sendMsg(new MessageObj(msg.getSender(), msg.getReceiver(), ERROR));
         }
     }
 }

@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 public class MessageObj implements Serializable {
 
-    public enum Message {ELECT}
+    public enum Message {ELECT, LEADER}
 
     private int leader;
 

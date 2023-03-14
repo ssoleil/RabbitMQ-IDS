@@ -4,11 +4,10 @@ import java.io.Serializable;
 
 public class MessageObj implements Serializable {
 
-    public enum Message {PING , PONG, START, ERROR, STARTED}
+    public enum Message {PING, PONG, START, ERROR, STARTED}
 
     private String receiver;
     private String sender;
-
     private Message msg;
 
     public MessageObj(String receiver, String sender, Message msg) {

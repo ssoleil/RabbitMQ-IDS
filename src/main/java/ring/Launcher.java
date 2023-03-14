@@ -4,7 +4,7 @@ import java.util.*;
 
 public class Launcher {
 
-    private static final int NUM_NODES = 16;
+    private static final int NUM_NODES = 4;
     static Integer[] nodeIds;
     static List<Node> ring = new ArrayList<>(NUM_NODES);
 
@@ -13,7 +13,7 @@ public class Launcher {
         nodeIds = generateIds();
 
         //check guarantee all ids are unique
-        checkIds();
+        //checkIds();
 
         //building the ring topology
         int i;

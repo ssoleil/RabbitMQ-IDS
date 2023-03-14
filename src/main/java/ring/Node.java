@@ -15,6 +15,10 @@ public class Node implements Communication_itf {
     private boolean leader = false;
     private final Channel channel; //in
 
+    private final Connection connection; //to open and close separately
+
+    private static final String LEADER_EXCHANGE = "who_is_leader";
+
     public Node(int id, int nextId) {
         this.id = id;
         this.nextId = nextId;
@@ -22,9 +26,14 @@ public class Node implements Communication_itf {
         try {
             ConnectionFactory factory = new ConnectionFactory();
             factory.setHost("localhost");
-            Connection connection = factory.newConnection();
+            this.connection = factory.newConnection();
             this.channel = connection.createChannel();
             this.channel.queueDeclare(String.valueOf(id), false, false, false, null);
+
+            //set up broadcast
+            channel.exchangeDeclare(LEADER_EXCHANGE, "fanout");
+            channel.queueBind(String.valueOf(id), LEADER_EXCHANGE, "");
+
             processMsg();
         } catch (IOException | TimeoutException e) {
             throw new RuntimeException(e);
@@ -49,7 +58,8 @@ public class Node implements Communication_itf {
         };
         boolean autoAck = true; // acknowledgment is covered below
         try {
-            channel.basicConsume(String.valueOf(id), autoAck, deliverCallback, consumerTag -> { });
+            channel.basicConsume(String.valueOf(id), autoAck, deliverCallback, consumerTag -> {
+            });
         } catch (IOException e) {
             //todo: change?
             throw new RuntimeException(e);
@@ -95,21 +105,51 @@ public class Node implements Communication_itf {
     }
 
     @Override
-    public void receiveMsg(MessageObj msg) {
+    public void sendBroadcast(MessageObj msg) {
+        byte[] byteMsg = getByteArray(msg);
 
-        System.out.println(this.id + " received leader " + msg.getLeader());
-
-        if (msg.getMsg() == MessageObj.Message.ELECT) {
-            if (this.id < msg.getLeader())
-                sendMsg(new MessageObj(this.id, MessageObj.Message.ELECT));
-            else if (this.id > msg.getLeader())
-                sendMsg(new MessageObj(msg.getLeader(), MessageObj.Message.ELECT));
-            else
-                this.leader = true;
-                //todo: broadcast and close all
+        try {
+            channel.basicPublish(LEADER_EXCHANGE, "", null, byteMsg);
+            System.out.println(this.id + " broadcast the final leader " + msg.getLeader());
+        } catch (IOException e) {
+            //todo: change?
+            throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public void receiveMsg(MessageObj msg) {
+
+        switch (msg.getMsg()) {
+            case ELECT: {
+                System.out.println(this.id + " received leader " + msg.getLeader());
+
+                if (this.id < msg.getLeader())
+                    sendMsg(new MessageObj(this.id, MessageObj.Message.ELECT));
+                else if (this.id > msg.getLeader())
+                    sendMsg(new MessageObj(msg.getLeader(), MessageObj.Message.ELECT));
+                else if (this.id == msg.getLeader()) {
+                    this.leader = true;
+                    sendBroadcast(new MessageObj(this.id, MessageObj.Message.LEADER));
+                    //todo: broadcast and close all
+                }
+                break;
+            }
+            case LEADER: {
+                //if we receive the leader, print and terminate
+                System.out.println(this.id + " knows leader is " + msg.getLeader());
+                try {
+                    this.channel.close();
+                    this.connection.close();
+                } catch (IOException | TimeoutException e) {
+                    throw new RuntimeException(e);
+                }
+                break;
+            }
+            default:
+                System.out.println(this.id + ": Unknown message");
+        }
+    }
+
 }
-
-
 

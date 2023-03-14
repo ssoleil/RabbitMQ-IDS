@@ -4,7 +4,7 @@ import java.util.*;
 
 public class Launcher {
 
-    private static final int NUM_NODES = 4;
+    private static final int NUM_NODES = 30;
     static Integer[] nodeIds;
     static List<Node> ring = new ArrayList<>(NUM_NODES);
 
@@ -22,10 +22,21 @@ public class Launcher {
         }
         ring.add(i, new Node(nodeIds[i], nodeIds[0]));
 
+        //check the topology
+        checkTopology();
+
         //start the election
         Node starter = ring.get(NUM_NODES / 2);
         starter.sendMsg(new MessageObj(starter.getId(), MessageObj.Message.ELECT));
 
+    }
+
+    private static void checkTopology() {
+        System.out.println("TOPOLOGY");
+        for (Node n: ring) {
+            System.out.print(n.getId() + " -> ");
+        }
+        System.out.println();
     }
 
     private static void checkIds() {
@@ -43,7 +54,7 @@ public class Launcher {
         Set<Integer> nodeIds = new HashSet<>();
         Random r = new Random();
         for (int i = 0; i < NUM_NODES; i++)
-            while (!nodeIds.add(r.nextInt(-10, 10)));
+            while (!nodeIds.add(r.nextInt(-100, 100)));
         return nodeIds.toArray(new Integer[NUM_NODES]);
     }
 }

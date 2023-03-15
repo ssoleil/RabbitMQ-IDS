@@ -4,14 +4,18 @@ import com.rabbitmq.client.*;
 
 import java.io.*;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static pingpong.MessageObj.Message.*;
 
-public class Node implements Communication_itf{
+public class Node implements Communication_itf {
 
     private final int id; //unique and used as the name of the queue
     private boolean started = false;
+    private final Connection connection;
     private final Channel channel;
+    private String partner; //queue name for out
 
     public Node(int id) {
         this.id = id;
@@ -19,13 +23,21 @@ public class Node implements Communication_itf{
         try {
             ConnectionFactory factory = new ConnectionFactory();
             factory.setHost("localhost");
-            Connection connection = factory.newConnection();
+            this.connection = factory.newConnection();
             this.channel = connection.createChannel();
             this.channel.queueDeclare(String.valueOf(id), false, false, false, null);
             processMsg();
         } catch (IOException | TimeoutException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setPartner(String partner) {
+        this.partner = partner;
     }
 
     public void processMsg() {
@@ -44,7 +56,6 @@ public class Node implements Communication_itf{
         try {
             channel.basicConsume(String.valueOf(id), autoAck, deliverCallback, consumerTag -> { });
         } catch (IOException e) {
-            //todo: change?
             throw new RuntimeException(e);
         }
     }
@@ -71,18 +82,40 @@ public class Node implements Communication_itf{
         return baos.toByteArray();
     }
 
+    public synchronized void start(Node node) {
+
+        //1st rule: start the ping-pong
+        if (!this.started) {
+            if (node.isReady(this)) {
+                this.started = true;
+                this.setPartner(String.valueOf(node.getId()));
+                sendMsg(new MessageObj(this.id, PING));
+            } else
+                System.out.println(node.getId() + " is already started");
+        } else
+            System.out.println(this.getId() + " is already started");
+    }
+
+    private boolean isReady(Node node) {
+        if (!this.started) {
+            this.setPartner(String.valueOf(node.getId()));
+            this.started = true;
+            return true;
+        } else
+            return false;
+    }
+
     @Override
     public void sendMsg(MessageObj msg) {
 
         byte[] byteMsg = getByteArray(msg);
 
         try {
-            channel.basicPublish("", msg.getReceiver(),
+            channel.basicPublish("", this.partner,
                     MessageProperties.PERSISTENT_TEXT_PLAIN,
                     byteMsg);
             System.out.println(this.id + " sent " + msg.getMsg());
         } catch (IOException e) {
-            //todo: change?
             throw new RuntimeException(e);
         }
     }
@@ -92,24 +125,38 @@ public class Node implements Communication_itf{
 
         System.out.println(this.id + " received " + msg.getMsg());
         switch(msg.getMsg()) {
-            //1st rule: start the PingPong
-            case START -> {
-                if (!started) {
-                    this.started = true;
-                    sendMsg(new MessageObj(msg.getSender(), msg.getReceiver(), PING));
-                } else
-                    sendMsg(new MessageObj(msg.getSender(), msg.getReceiver(), STARTED));
-            }
 
             //2nd rule: receive a PING
-            case PING -> sendMsg(new MessageObj(msg.getSender(), msg.getReceiver(), PONG));
+            case PING -> {
+                //we need to check if the node is started here
+                //to prevent the usage of sendMsg(PING) from the Launcher
+                if (this.started && msg.getId() < this.id)
+                    sendMsg(new MessageObj(this.id, PONG));
+                else
+                    sendMsg(new MessageObj(msg.getId(), ERROR));
+            }
 
             //3rd rule: receive a PONG
-            case PONG -> sendMsg(new MessageObj(msg.getSender(), msg.getReceiver(), PING));
+            case PONG -> {
+                //we need to check if the node is started here
+                //to prevent the usage of sendMsg(PONG) from the Launcher
+                if (this.started && msg.getId() > this.id)
+                    sendMsg(new MessageObj(this.id, PING));
+                else
+                    sendMsg(new MessageObj(msg.getId(), ERROR));
+            }
 
-            case ERROR -> System.out.println("Request failed");
-            case STARTED -> System.out.println("Node is already started");
-            default -> sendMsg(new MessageObj(msg.getSender(), msg.getReceiver(), ERROR));
+            case ERROR -> {
+                System.out.println("Request failed");
+                try {
+                    this.channel.close();
+                    this.connection.close();
+                } catch (IOException | TimeoutException e) {
+                    throw new RuntimeException(e);
+                }
+                System.exit(-1);
+            }
+            default -> sendMsg(new MessageObj(msg.getId(), ERROR));
         }
     }
 }

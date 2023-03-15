@@ -121,7 +121,7 @@ public class Node implements Communication_itf {
     public void receiveMsg(MessageObj msg) {
 
         switch (msg.getMsg()) {
-            case ELECT: {
+            case ELECT -> {
                 System.out.println(this.id + " received leader " + msg.getLeader());
 
                 if (this.id < msg.getLeader())
@@ -133,9 +133,8 @@ public class Node implements Communication_itf {
                     sendBroadcast(new MessageObj(this.id, MessageObj.Message.LEADER));
                     //todo: broadcast and close all
                 }
-                break;
             }
-            case LEADER: {
+            case LEADER -> {
                 //if we receive the leader, print and terminate
                 System.out.println(this.id + " knows leader is " + msg.getLeader());
                 try {
@@ -144,10 +143,8 @@ public class Node implements Communication_itf {
                 } catch (IOException | TimeoutException e) {
                     throw new RuntimeException(e);
                 }
-                break;
             }
-            default:
-                System.out.println(this.id + ": Unknown message");
+            default -> System.out.println(this.id + ": Unknown message");
         }
     }
 

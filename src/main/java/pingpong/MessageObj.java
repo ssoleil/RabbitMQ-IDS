@@ -4,23 +4,26 @@ import java.io.Serializable;
 
 public class MessageObj implements Serializable {
 
-    public enum Message {PING, PONG, START, ERROR, STARTED}
+    public enum Message {PING, PONG, ERROR}
 
-    private String receiver;
-    private String sender;
+    private int sender;
+    private int id;
     private Message msg;
 
-    public MessageObj(String receiver, String sender, Message msg) {
-        this.receiver = receiver;
-        this.sender = sender;
+    public MessageObj(int id, Message msg) {
+        this.id = id;
         this.msg = msg;
     }
 
-    public String getReceiver() {
-        return receiver;
+    public int getId() {
+        return id;
     }
 
-    public String getSender() {
+    public int getReceiver() {
+        return id;
+    }
+
+    public int getSender() {
         return sender;
     }
 

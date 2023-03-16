@@ -131,7 +131,6 @@ public class Node implements Communication_itf {
                 else if (this.id == msg.getLeader()) {
                     this.leader = true;
                     sendBroadcast(new MessageObj(this.id, MessageObj.Message.LEADER));
-                    //todo: broadcast and close all
                 }
             }
             case LEADER -> {
